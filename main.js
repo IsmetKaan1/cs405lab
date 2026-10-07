@@ -77,19 +77,33 @@ const shaderModule = device.createShaderModule({
 
       let p = pos[vi];
 
-      // TODO 4: Zamanla dönme hesabı (2D Rotasyon)
-      let angle = uniforms.time;
-      let cos_a = cos(angle);
-      let sin_a = sin(angle);
-      let rotated = vec2f(
-        p.x * cos_a - p.y * sin_a,
-        p.x * sin_a + p.y * cos_a
+      // ---------------------------------------------------------------------
+      // Step 6: Matris Dönüşümleri (Matrix Transformations)
+      // ---------------------------------------------------------------------
+
+      // 1) Non-uniform Scale Matrisi (Kareyi dikdörtgen yapmak için: X = 1.8 kat, Y = 0.8 kat)
+      let S = mat2x2f(
+        1.8, 0.0,   // 1. sütun
+        0.0, 0.8    // 2. sütun
       );
 
-      // TODO 5: En-boy oranı (aspect ratio) düzeltmesi:
-      let corrected = vec2f(rotated.x / uniforms.aspect, rotated.y);
+      // 2) 2D Rotasyon Matrisi (R) - WGSL column-major formatında
+      let a = uniforms.time;
+      let cos_a = cos(a);
+      let sin_a = sin(a);
+      let R = mat2x2f(
+        cos_a,  sin_a,   // 1. sütun: [cos, sin]
+       -sin_a,  cos_a    // 2. sütun: [-sin, cos]
+      );
 
-      // TODO 5: Farenin konumunu ekleyerek şeklin fareyi takip etmesi:
+      // 3) Scale then Rotate (Önce ölçekle, sonra döndür -> "turning rectangle")
+      // Not: Sırayı S * (R * p) yaparsan "rotate then scale" olur (dönerken esneyen jöle etkisi)
+      let transformed = R * (S * p);
+
+      // Aspect ratio (en-boy oranı) düzeltmesi:
+      let corrected = vec2f(transformed.x / uniforms.aspect, transformed.y);
+
+      // Fare takibi (öteleme):
       let final_pos = corrected + uniforms.mouse;
 
       var out: VertexOutput;
